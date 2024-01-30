@@ -48,7 +48,7 @@ def kelvintoJybeam(file_name, outfilename, beamfile):
     wtmap_hdu=fits.ImageHDU(header=hdu[1].header,data=data1,name='wtmap')
     new_hdul=fits.HDUList([new_hdu,wtmap_hdu])
     # Write file, outputfilename should include the path
-    outfile=new_hdu.writeto(outfilename,overwrite=True)
+    outfile=new_hdul.writeto(outfilename,overwrite=True)
     return outfile
 
 # Run file as a script to make fits files
