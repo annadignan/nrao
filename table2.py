@@ -1,4 +1,3 @@
-#import statements
 from astropy.table import Table
 from astropy.io import ascii, fits
 import pandas as pd
@@ -12,6 +11,12 @@ galaxies=['NGC 0337','NGC 0628','NGC 0925','NGC 2146','NGC 2798','NGC 2841','NGC
           'NGC 3938','NGC 4254','NGC 4321','NGC 4536','NGC 4559','NGC 4569','NGC 4579',
           'NGC 4594','NGC 4625','NGC 4631','NGC 4725','NGC 5194','NGC 5474','NGC 5713',
           'NGC 6946','NGC 7331']
+
+galaxies_final=[]
+
+for d in galaxies:
+    string=('\,'.join([d[:3], d[4:]]))
+    galaxies_final.append(string)
 
 #read in file with bmaj and bmin info 
 beamfile=pd.read_csv('/users/adignan/csv/beam_info.csv')
@@ -67,24 +72,24 @@ noises=[]
 for index,row in beamfile.iterrows():
     hdu=fits.open(row['jyfile'])
     data0, data1, header = hdu[0].data, hdu[1].data, hdu[0].header
-    a_beam=np.pi*((row['bmaj']/2)**2)
-    a_pix=(np.abs(header['CDELT1']))**2
-    rms_final=row['noise']/np.sqrt(a_beam/a_pix)
+    a_beam_arcsec=2*np.pi*((row['bmaj']*u.arcsec/(np.sqrt(8*np.log(2))))**2)
+    a_beam_deg=a_beam_arcsec.to(u.degree**2)
+    a_pix=(np.abs(header['CDELT1']))**2 #CDELT1 keyword is in units of degree / pixel
+    rms_final=row['noise']/np.sqrt(a_beam_deg/a_pix) #take ratio, both in degrees squared
 #     print(rms_final)
-    omega= 2*np.pi*(row['bmaj']*u.arcsec.to(u.radian))**2 #solid angle of beam 
+#     omega= 2*np.pi*(row['bmaj']*u.arcsec.to(u.radian))**2 #solid angle of beam 
 #     sigma_tb_kelvin=((0.1)**2*(row['noise'])*10**(-26))/ (2*(k_B)*omega) #final brightness temp sensitivity
 #     sigma_tb_mk=(sigma_tb_kelvin.value*10**3)
-    sigma_tb_mk=(1216*(row['noise'])*10**6)/(row['bmaj']*row['bmin']*(90)**2)
-#     sigma_tb_mk=round(sigma_tb_mk,2)
-    print(sigma_tb_mk)
+    sigma_tb_mk=(1216*((rms_final)*10**6))/(row['bmaj']*row['bmin']*(90)**2)
+    sigma_tb_mk=round(sigma_tb_mk.value,2)
+#     print(sigma_tb_mk)
     sigma_tbs.append(sigma_tb_mk)
-    noises.append(round(row['noise']*10**6,2))
+    noises.append(round(rms_final.value*10**6,2))
 
-data={'Galaxy':galaxies, 'R.A.':ras, 'Decl.':decs, 'Synthesized Beam':beam,
+data={'Galaxy':galaxies_final, 'R.A.':ras, 'Decl.':decs, 'Synthesized Beam':beam,
      'Point-source sensitivity (microJy/bm)':noises,
       'Brightness temperature sensitivity (mK)':(sigma_tbs)}
 
 # print(np.average(beamfile['noise']*1e6))
 
 ascii.write(data, format="latex")
-
